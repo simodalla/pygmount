@@ -56,27 +56,3 @@ def read_config(file=None):
             dict_share.update({k: v})
         shares.append(dict_share)
     return shares
-
-
-def install_media():
-    from pkg_resources import Requirement, resource_filename
-
-    # Get our file.
-    filename = resource_filename(Requirement.parse("Project"),
-                                 "config/config.sample.xml")
-
-    try:
-        import shutil
-
-        # Create the directory.
-        if not os.path.exists("/etc/myproject"):
-            os.mkdir("/etc/myproject")
-
-        # Copy the source file. Don't clobber existing files.
-        if not os.path.exists("/etc/myproject/config.xml"):
-            shutil.copyfile(filename, "/etc/myproject/config.xml")
-
-    except IOError:
-        print(
-            "Unable to copy configuration file to /etc/myproject/config.xml.")
-
