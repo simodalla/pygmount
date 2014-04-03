@@ -15,15 +15,16 @@ from PyZenity import Question, GetText, InfoMessage, ErrorMessage, Progress
 from pygmount.utils.utils import get_sudo_username, read_config, get_home_dir
 
 FILE_RC = '.pygmount.rc'
-                    
+
 
 class MountSmbShares(object):
     """
     Classe di utilità per gestire il processo di montaggio di cartelle di rete
     condivise da server samba/windows.
     """
+
     def __init__(self, verbose=False, file=None,
-                 dry_run=False, shell_mode=False):       
+                 dry_run=False, shell_mode=False):
         self.verbose = verbose
         self.file = file
         self.dry_run = dry_run
@@ -36,24 +37,24 @@ class MountSmbShares(object):
                           " -o username=\"%(domain_username)s\""
                           ",uid=%(host_username)s"
                           ",password=\"%(domain_password)s\"")
-        self.username = (self.host_username if self.host_username 
-                             else os.environ['USER'])
+        self.username = (self.host_username if self.host_username
+                         else os.environ['USER'])
         self.cmd_umount = "umount %(mountpoint)s"
         self.msg_error = "Impossibile collegare le unità di rete [%s]."
         self.home_dir = get_home_dir()
-        logging.basicConfig(filename='{}{}/.pygmount.log'.format(self.home_dir,
-                                                                 self.username), 
-                            filemode='a', level=logging.INFO)  
-        
+        logging.basicConfig(
+            filename='{}{}/.pygmount.log'.format(self.home_dir, self.username),
+            filemode='a', level=logging.INFO)
+
     def requirements(self):
         """
         Verifica che tutti i pacchetti apt necessari al "funzionamento" della
         classe siano installati. Se cosi' non fosse li installa.
         """
-        cache = apt.cache.Cache()            
+        cache = apt.cache.Cache()
         for pkg in self.pkgs_required:
             try:
-                pkg = cache[pkg]            
+                pkg = cache[pkg]
                 if not pkg.is_installed:
                     try:
                         pkg.mark_install()
@@ -61,16 +62,16 @@ class MountSmbShares(object):
                     except LockFailedException as lfe:
                         logging.error(
                             'Errore "{}" probabilmente l\'utente {} non ha i '
-                            'diritti di amministratore'.format(lfe, 
+                            'diritti di amministratore'.format(lfe,
                                                                self.username))
                         raise lfe
                     except Exception as e:
-                        logging.error('Errore non classificato "{}"'.format(e)) 
+                        logging.error('Errore non classificato "{}"'.format(e))
                     raise e
             except KeyError as ke:
                 logging.error('Il pacchetto "{}" non e\' presente in questa'
-                              ' distribuzione'.format(pkg))  
-            
+                              ' distribuzione'.format(pkg))
+
 
     def set_shares(self):
         """
@@ -101,25 +102,25 @@ class MountSmbShares(object):
         """
         logging.info('start run with "{}" at {}'.format(
             self.username, datetime.datetime.now()))
-        progress = Progress(text="Controllo requisiti software...", 
+        progress = Progress(text="Controllo requisiti software...",
                             pulsate=True, auto_close=True)
         progress(1)
         try:
             self.requirements()
         except LockFailedException as lfe:
             ErrorMessage('Errore "{}" probabilmente l\'utente {} non ha i'
-                         ' diritti di amministratore'.format(lfe, 
-                                                             self.username))  
-            sys.exit(20)                                         
+                         ' diritti di amministratore'.format(lfe,
+                                                             self.username))
+            sys.exit(20)
         except Exception as e:
             ErrorMessage("Si e' verificato un errore generico: {}".format(e))
-            sys.exit(21) 
+            sys.exit(21)
         progress(100)
-        
+
         self.set_shares()
         # richiesta username del dominio
         insert_msg = "Inserisci l'utente del Dominio/Posta Elettronica"
-        default_username = (self.host_username if self.host_username 
+        default_username = (self.host_username if self.host_username
                             else os.environ['USER'])
         self.domain_username = GetText(text=insert_msg,
                                        entry_text=self.username)
@@ -148,7 +149,8 @@ class MountSmbShares(object):
         # ciclo per montare tutte le condivisioni
         result = []
         for share in self.samba_shares:
-
+            # print("#######")
+            # print(share)
             if 'mountpoint' not in share.keys():
                 # creazione stringa che rappresente il mount-point locale
                 mountpoint = os.path.expanduser(
@@ -161,9 +163,12 @@ class MountSmbShares(object):
                     '~%s/%s' % (self.host_username, share['mountpoint']))
                 share.update({'mountpoint': mountpoint})
 
-            share.update({'host_username': self.host_username,
-                          'domain_username': self.domain_username,
-                          'domain_password': self.domain_password})
+            share.update({
+                'host_username': self.host_username,
+                'domain_username': share.get(
+                    'username', self.domain_username),
+                'domain_password': share.get(
+                    'password', self.domain_password)})
 
             # controllo che il mount-point locale esista altrimenti non
             # viene creato
@@ -190,6 +195,8 @@ class MountSmbShares(object):
                 logging.warning("Mount command: %s%s" % (mount_cmd.split(
                     placeholder)[0], placeholder + "******\""))
 
+            # print(mount_cmd)
+            # print("#######")
             if not self.dry_run:
                 # montaggio della condivisione
                 p_mnt = subprocess.Popen(mount_cmd, shell=True,
@@ -203,7 +210,7 @@ class MountSmbShares(object):
         progress(100)
         if self.verbose:
             logging.warning("Risultati: %s" % result)
-      
+
 
 
 

@@ -20,9 +20,10 @@ if sys.argv[-1] == 'publish':
 
 readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
+name = 'pygmount'
 
 setup(
-    name='pygmount',
+    name=name,
     version=version,
     description='Software for graphical mount network shares.',
     long_description=readme + '\n\n' + history,
@@ -32,7 +33,9 @@ setup(
     packages=find_packages(),
     package_dir={'pygmount': 'pygmount'},
     include_package_data=True,
-    install_requires=[
+    install_requires=['PyZenity==0.1.7'],
+    dependency_links=[
+        "http://brianramos.com/software/PyZenity/PyZenity-0.1.7.tar.gz#egg=PyZenity-0.1.7"
     ],
     entry_points={
         'console_scripts': [
@@ -70,18 +73,20 @@ setup(
 )
 
 
-if 'install' in sys.argv:
-    from pkg_resources import Requirement, resource_filename
-
-    filename = resource_filename(Requirement.parse('pygmount'),
-                                 'pygmount/media/mount-smb-shares.desktop')
-    desktop_applications = '/usr/share/applications/'
-    if os.path.exists(desktop_applications):
-        try:
-            shutil.copy(filename, desktop_applications)
-        except IOError as e:
-            print('#### Error! Impossible copy "{}": {}. ####'.format(
-                filename, e))
-    else:
-        print('#### Error! Directory "{}" not exist. ####'.format(
-            desktop_applications))
+# if 'install' in sys.argv:
+#     from pkg_resources import Requirement, resource_filename
+#
+#     filename = resource_filename(Requirement.parse(name),
+#                                  'pygmount/media/mount-smb-shares.desktop')
+#     desktop_applications = '/usr/share/applications/'
+#     if os.path.exists(desktop_applications):
+#         try:
+#             shutil.copy(filename, desktop_applications)
+#             print('#### File "{}" successfully installed into "{}"'
+#                   ' ####'.format(filename, desktop_applications))
+#         except IOError as e:
+#             print('#### Error! Impossible copy "{}": {}. ####'.format(
+#                 filename, e))
+#     else:
+#         print('#### Error! Directory "{}" not exist. ####'.format(
+#             desktop_applications))

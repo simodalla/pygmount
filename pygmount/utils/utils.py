@@ -3,13 +3,17 @@ from __future__ import unicode_literals, absolute_import
 
 import os
 import platform
-import ConfigParser
+try:
+    from ConfigParser import ConfigParser
+except ImportError:
+    from configparser import ConfigParser
 
 
 def get_sudo_username():
     """
-    Check 'SUDO_USER' var if in environment and return a tuple with True and value of 'SUDO_USER' if
-    the var in environment or a tuple with False and 'USER' value.
+    Check 'SUDO_USER' var if in environment and return a tuple with True and
+    value of 'SUDO_USER' if the var in environment or a tuple with False and
+    'USER' value.
 
     Return tuple.
     """
@@ -35,24 +39,34 @@ def get_home_dir():
         raise Exception("Impossibile individuare il tipo di sistema")
 
 
-def read_config(file=None):
+def read_config(filename=None):
     """
-    Read a config file into .ini format and return dict of shares.
+    Read a config filename into .ini format and return dict of shares.
 
     Keyword arguments:
-    file -- the path of config file (default None)
+    filename -- the path of config filename (default None)
 
     Return dict.
     """
-    if not os.path.exists(file):
-        raise IOError('Impossibile trovare il file %s' % file)
+    if not os.path.exists(filename):
+        raise IOError('Impossibile trovare il filename %s' % filename)
     shares = []
-    config = ConfigParser.ConfigParser()
-    config.read(file)
+    config = ConfigParser()
+    config.read(filename)
     for share_items in [config.items(share_title) for share_title in
                         config.sections()]:
         dict_share = {}
-        for k, v in share_items:
-            dict_share.update({k: v})
+        for key, value in share_items:
+            if key == 'hostname' and '@' in value:
+                hostname, credentials = (item[::-1] for item
+                                         in value[::-1].split('@', 1))
+                dict_share.update({key: hostname})
+                credentials = tuple(cred.lstrip('"').rstrip('"')
+                                    for cred in credentials.split(':', 1))
+                dict_share.update({'username': credentials[0]})
+                if len(credentials) > 1:
+                    dict_share.update({'password': credentials[1]})
+                continue
+            dict_share.update({key: value})
         shares.append(dict_share)
     return shares
