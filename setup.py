@@ -4,15 +4,13 @@
 import os
 import sys
 import shutil
-import traceback
 
 import pygmount
 
-
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
 except ImportError:
-    from distutils.core import setup
+    from distutils.core import setup, find_packages
 
 version = pygmount.__version__
 
@@ -25,15 +23,13 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
     name='pygmount',
-    version='0.1.0',
+    version=version,
     description='Software for graphical mount network shares.',
     long_description=readme + '\n\n' + history,
     author='Simone Dalla',
     author_email='simodalla@gmail.com',
     url='https://github.com/simodalla/pygmount',
-    packages=[
-        'pygmount',
-    ],
+    packages=find_packages(),
     package_dir={'pygmount': 'pygmount'},
     include_package_data=True,
     install_requires=[
@@ -47,7 +43,7 @@ setup(
     zip_safe=False,
     keywords='pygmount samba zenity pyzenity gnome mint',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Console',
         'Environment :: X11 Applications :: GTK',
         'Intended Audience :: End Users/Desktop',
@@ -73,15 +69,19 @@ setup(
     test_suite='tests',
 )
 
-print("########")
+
 if 'install' in sys.argv:
-    print("*********")
-    ABSOLUTE_PATH = '%s' % os.path.abspath(
-        os.path.dirname(__file__)).replace('\\', '/')
+    from pkg_resources import Requirement, resource_filename
+
+    filename = resource_filename(Requirement.parse('pygmount'),
+                                 'pygmount/media/mount-smb-shares.desktop')
     desktop_applications = '/usr/share/applications/'
     if os.path.exists(desktop_applications):
         try:
-            shutil.copy(ABSOLUTE_PATH + '/media/mount-smb-shares.desktop',
-                        desktop_applications)
-        except IOError:
-            traceback.print_exc(file=sys.stdout)
+            shutil.copy(filename, desktop_applications)
+        except IOError as e:
+            print('#### Error! Impossible copy "{}": {}. ####'.format(
+                filename, e))
+    else:
+        print('#### Error! Directory "{}" not exist. ####'.format(
+            desktop_applications))
