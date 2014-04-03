@@ -1,0 +1,13 @@
+[absoluthe_share]
+hostname=server_windows.example
+share=condivisione
+mountpoint=/mnt/mountpoint_condivisione1
+
+[relative_share]
+hostname=server_windows.example
+share=condivisione
+mountpoint=mountpoint_
+
+[simple_share]
+hostname=server_windows.example
+share=condivisione

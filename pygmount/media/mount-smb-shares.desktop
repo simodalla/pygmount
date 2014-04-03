@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Icon[en_US]=gksu
+Exec=gksu mount-smb-shares
+Name[en_US]=Monta cartelle di rete
+Comment[en_US]=Monta cartelle di rete
+Name=Monta cartelle di rete
+Comment=Monta cartelle di rete
+Icon=gdu-mount
+Categories=Application;Internet;Network;

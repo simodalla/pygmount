@@ -2,11 +2,16 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ad1a5aa6-eb4e-411c-956b-81c719c08aac" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/pygmount/pygmount.py" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/MANIFEST.in" afterPath="$PROJECT_DIR$/MANIFEST.in" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/setup.py" afterPath="$PROJECT_DIR$/setup.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/vcs.xml" afterPath="$PROJECT_DIR$/.idea/vcs.xml" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/thirdparty/PyZenity-0.1.7.tar.gz" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/pygmount/utils/__init__.py" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/pygmount/utils/aaa.py" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/ez_setup.py" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/pygmount/media/mount-smb-shares.desktop" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/pygmount/utils/mount.py" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/pygmount/media/pygmount.rc.example" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/pygmount/utils/utils.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="pygmount.iws" />
@@ -42,7 +47,7 @@
       <file leaf-file-name="setup.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/setup.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="13" column="45" selection-start="175" selection-end="175" vertical-scroll-proportion="0.22780374" vertical-offset="0" max-vertical-offset="1395">
+            <state line="13" column="45" selection-start="175" selection-end="175" vertical-scroll-proportion="0.22833724" vertical-offset="0" max-vertical-offset="1395">
               <folding>
                 <element signature="e#47#56#0" expanded="true" />
               </folding>
@@ -89,8 +94,8 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="101" />
-    <option name="y" value="53" />
+    <option name="x" value="925" />
+    <option name="y" value="146" />
     <option name="width" value="962" />
     <option name="height" value="973" />
   </component>
@@ -371,18 +376,24 @@
       <created>1396272581691</created>
       <updated>1396272581691</updated>
     </task>
+    <task id="LOCAL-00001" summary="migration from mercurial">
+      <created>1396512633063</created>
+      <updated>1396512633063</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="101" y="53" width="962" height="973" extended-state="0" />
-    <editor active="true" />
+    <frame x="925" y="146" width="962" height="973" extended-state="0" />
+    <editor active="false" />
     <layout>
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23586957" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23586957" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
@@ -409,6 +420,8 @@
     <option name="myTodoPanelSettings">
       <TodoPanelSettings />
     </option>
+    <MESSAGE value="migration from mercurial" />
+    <option name="LAST_COMMIT_MESSAGE" value="migration from mercurial" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
@@ -515,7 +528,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/setup.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="13" column="45" selection-start="175" selection-end="175" vertical-scroll-proportion="0.22780374" vertical-offset="0" max-vertical-offset="1395">
+        <state line="13" column="45" selection-start="175" selection-end="175" vertical-scroll-proportion="0.22833724" vertical-offset="0" max-vertical-offset="1395">
           <folding>
             <element signature="e#47#56#0" expanded="true" />
           </folding>
