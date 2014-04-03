@@ -76,20 +76,20 @@ setup(
 )
 
 
-# if 'install' in sys.argv:
-#     from pkg_resources import Requirement, resource_filename
-#
-#     filename = resource_filename(Requirement.parse(name),
-#                                  'pygmount/media/mount-smb-shares.desktop')
-#     desktop_applications = '/usr/share/applications/'
-#     if os.path.exists(desktop_applications):
-#         try:
-#             shutil.copy(filename, desktop_applications)
-#             print('#### File "{}" successfully installed into "{}"'
-#                   ' ####'.format(filename, desktop_applications))
-#         except IOError as e:
-#             print('#### Error! Impossible copy "{}": {}. ####'.format(
-#                 filename, e))
-#     else:
-#         print('#### Error! Directory "{}" not exist. ####'.format(
-#             desktop_applications))
+if 'install' in sys.argv:
+    from pkg_resources import Requirement, resource_filename
+
+    filename = resource_filename(Requirement.parse(name),
+                                 'pygmount/media/mount-smb-shares.desktop')
+    desktop_applications = '/usr/share/applications/'
+    if os.path.exists(desktop_applications):
+        try:
+            shutil.copy(filename, desktop_applications)
+            print('#### File "{}" successfully installed into "{}"'
+                  ' ####'.format(filename, desktop_applications))
+        except IOError as e:
+            print('#### Error! Impossible copy "{}": {}. ####'.format(
+                filename, e))
+    else:
+        print('#### Error! Directory "{}" not exist. ####'.format(
+            desktop_applications))
