@@ -23,10 +23,10 @@ class MountSmbShares(object):
     condivise da server samba/windows.
     """
 
-    def __init__(self, verbose=False, file=None,
+    def __init__(self, verbose=False, filename=None,
                  dry_run=False, shell_mode=False):
         self.verbose = verbose
-        self.file = file
+        self.filename = filename
         self.dry_run = dry_run
         self.shell_mode = shell_mode
         self.pkgs_required = ['smbfs']
@@ -67,11 +67,10 @@ class MountSmbShares(object):
                         raise lfe
                     except Exception as e:
                         logging.error('Errore non classificato "{}"'.format(e))
-                    raise e
-            except KeyError as ke:
+                        raise e
+            except KeyError:
                 logging.error('Il pacchetto "{}" non e\' presente in questa'
                               ' distribuzione'.format(pkg))
-
 
     def set_shares(self):
         """
@@ -80,10 +79,10 @@ class MountSmbShares(object):
         I vari dizionari sono popolati o da un file ~/.pygmount.rc e da un
         file passato dall'utente.
         """
-        if self.file is None:
-            self.file = os.path.expanduser('~%s/%s' % (self.host_username,
-                                                       FILE_RC))
-        if not os.path.exists(self.file):
+        if self.filename is None:
+            self.filenamename = os.path.expanduser(
+                '~%s/%s' % (self.host_username, FILE_RC))
+        if not os.path.exists(self.filename):
             error_msg = (u"Impossibile trovare il file di configurazione "
                          u"'%s'.\nLe unità di rete non saranno collegate." % (
                              FILE_RC.lstrip('.')))
@@ -92,8 +91,8 @@ class MountSmbShares(object):
             logging.error(error_msg)
             sys.exit(5)
         if self.verbose:
-            logging.warning("File RC utilizzato: %s", self.file)
-        self.samba_shares = read_config(self.file)
+            logging.warning("File RC utilizzato: %s", self.filename)
+        self.samba_shares = read_config(self.filename)
 
     def run(self):
         """

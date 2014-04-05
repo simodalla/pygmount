@@ -10,7 +10,7 @@ Tests for `pygmount` module.
 
 import unittest
 
-from pygmount import pygmount
+# from pygmount import pygmount
 
 
 class TestPygmount(unittest.TestCase):
