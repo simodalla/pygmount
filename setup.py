@@ -42,7 +42,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'mount-smb-shares = pygmount.bin.mount_smb_shares:main'
+            'mount-smb-shares = pygmount.app.mount_smb_shares:main'
         ]
     },
     license="BSD",
