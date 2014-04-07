@@ -23,8 +23,7 @@ class MountCifsWrapperTest(unittest.TestCase):
 
     def test_service_property(self):
         wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint)
-        self.assertEqual(wrapper.service, '//{}/{}'.format(self.server,
-                                                           self.share))
+        self.assertEqual(wrapper.service, '//{self.server}/{self.share}'.format(self=self))
 
     def test_get_command_whitout_options(self):
         wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint)

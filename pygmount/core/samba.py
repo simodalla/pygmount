@@ -24,7 +24,7 @@ class MountCifsWrapper(object):
 
     @property
     def service(self):
-        return '//{}'.format(os.path.join(self.server, self.share))
+        return '//{path}'.format(path=os.path.join(self.server, self.share))
 
     @property
     def option(self):
