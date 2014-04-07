@@ -25,6 +25,21 @@ readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 name = 'pygmount'
 
+from setuptools.command.test import test as TestCommand
+
+
+class PyTest(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        #import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(self.test_args)
+        sys.exit(errno)
+
 setup(
     name=name,
     version=version,
@@ -38,7 +53,8 @@ setup(
     include_package_data=True,
     install_requires=['PyZenity==0.1.7'],
     dependency_links=[
-        "http://brianramos.com/software/PyZenity/PyZenity-0.1.7.tar.gz#egg=PyZenity-0.1.7"
+        "http://brianramos.com/software/PyZenity/PyZenity-0.1.7.tar.gz"
+        "#egg=PyZenity-0.1.7"
     ],
     entry_points={
         'console_scripts': [
@@ -72,7 +88,8 @@ setup(
         'Topic :: System :: Shells',
         'Topic :: Utilities',
     ],
-    test_suite='tests',
+    tests_require=['pytest'],
+    cmdclass={'test': PyTest},
 )
 
 
@@ -85,11 +102,11 @@ if 'install' in sys.argv:
     if os.path.exists(desktop_applications):
         try:
             shutil.copy(filename, desktop_applications)
-            print('#### File "{}" successfully installed into "{}"'
+            print('#### File "{0}" successfully installed into "{1}"'
                   ' ####'.format(filename, desktop_applications))
         except IOError as e:
-            print('#### Error! Impossible copy "{}": {}. ####'.format(
+            print('#### Error! Impossible copy "{0}": {1}. ####'.format(
                 filename, e))
     else:
-        print('#### Error! Directory "{}" not exist. ####'.format(
+        print('#### Error! Directory "{0}" not exist. ####'.format(
             desktop_applications))
