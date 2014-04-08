@@ -13,8 +13,7 @@ class MountCifsWrapper(object):
         self.server = server
         self.share = share
         self.mountpoint = mountpoint
-        self.options = {}
-        # for sel
+        self.options = kwargs
 
     @property
     def command(self):
@@ -26,15 +25,19 @@ class MountCifsWrapper(object):
     def service(self):
         return '//{path}'.format(path=os.path.join(self.server, self.share))
 
+    # def get_option(self, option):
+    #     return self.options
+
     @property
-    def option(self):
-        return self.options
+    def options(self):
+        result = '-o'
+        for option, value in self._options:
+            result += (' {}={}'.format(option, value) if value
+                       else ' {}'.format(option))
+        return result
 
-    # @option
-
-    # @options.setter
-    # def options(self, kwargs):
-    #     print("SETTER", kwargs)
-    #     self.options =
+    @options.setter
+    def options(self, options):
+        self._options = [(key, options[key]) for key in options]
 
 
