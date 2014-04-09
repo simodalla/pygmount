@@ -2,12 +2,26 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, absolute_import
 
+import subprocess
+
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+try:
+    from mock import patch, Mock
+except ImportError:
+    from unittest.mock import patch, Mock
 
 from pygmount.core.samba import MountCifsWrapper
+
+
+def get_fake_popen(return_code):
+    popen = Mock()
+    process = Mock()
+    process.wait.return_value = return_code
+    popen.return_value = process
+    return popen
 
 
 class MountCifsWrapperTest(unittest.TestCase):
@@ -107,3 +121,24 @@ class MountCifsWrapperTest(unittest.TestCase):
         wrapper['foo'] = 'bar'
         self.assertIn(('foo', 'bar'), wrapper._options.items())
 
+    @patch('pygmount.core.samba.subprocess.Popen')
+    def test_run_command_call_subprocess_and_wait(self, mock_popen):
+        mock_process = Mock()
+        mock_process.wait.return_code = 0
+        mock_popen.return_value = mock_process
+        options = {'foo': 'bar'}
+        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
+                                   **options)
+        result = wrapper.run_command()
+        mock_popen.assert_called_once_with(wrapper.command, shell=True,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+        mock_process.wait.assert_called_once_with()
+    # with patch('pygmount.core.samba.subprocess.Popen',
+    #            get_fake_popen(0)) as mock_popen:
+    #     result = wrapper.run_command()
+    #     print(mock_popen.mock_calls)
+    #     mock_popen.assert_called_once_with(wrapper.command, shell=True,
+    #                                        stdout=subprocess.PIPE,
+    #                                        stderr=subprocess.PIPE)
+    #     mock_popen.wait.assert_called_once_with()
