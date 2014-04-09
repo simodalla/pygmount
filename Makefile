@@ -37,7 +37,7 @@ coverage:
 	coverage run --source pygmount setup.py test
 	coverage report -m
 	coverage html
-	open htmlcov/index.html
+	# open htmlcov/index.html
 
 docs:
 	rm -f docs/pygmount.rst
