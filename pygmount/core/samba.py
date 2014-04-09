@@ -2,13 +2,19 @@
 from __future__ import unicode_literals, absolute_import
 
 import os.path
+import subprocess
+
+
+MOUNT_COMMAND_NAME = 'mount'
+CIFS_FILESYSTEM_TYPE = 'cifs'
 
 
 class MountCifsWrapper(object):
-    command_name = 'mount'
-    filesystem_type = 'cifs'
 
-    def __init__(self, server, share, mountpoint, **kwargs):
+    def __init__(self, server, share, mountpoint, filesystem_type=None,
+                 **kwargs):
+        self.command_name = MOUNT_COMMAND_NAME
+        self.filesystem_type = CIFS_FILESYSTEM_TYPE
         self.server = server
         self.share = share
         self.mountpoint = mountpoint
@@ -46,3 +52,9 @@ class MountCifsWrapper(object):
 
     def __setitem__(self, key, value):
         self._options[key] = value
+
+    def run_command(self):
+        process = subprocess.Popen(self.command, shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        retcode = process.wait()
