@@ -1,3 +1,6 @@
 wheel==0.22.0
 mock
 coverage
+pytest
+pyflakes
+pytest-cov

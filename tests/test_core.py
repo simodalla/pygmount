@@ -13,15 +13,51 @@ try:
 except ImportError:
     from unittest.mock import patch, Mock
 
-from pygmount.core.samba import MountCifsWrapper
+from pygmount.core.samba import (MountCifsWrapper, MountSmbShares,
+                                 InstallRequiredPackageError)
 
 
-def get_fake_popen(return_code):
-    popen = Mock()
-    process = Mock()
-    process.wait.return_value = return_code
-    popen.return_value = process
-    return popen
+
+def get_fake_check_output(return_code=0, return_out='out'):
+    check_output = Mock()
+    if return_code == 0:
+        check_output.return_value = return_out
+    else:
+        check_output.side_effect = subprocess.CalledProcessError(
+            return_code, 'command', return_out)
+    return check_output
+
+
+class FakeCache(object):
+    def __init__(self):
+        self.packages = {}
+
+    def __getitem__(self, item):
+        return self.packages[item]
+
+    def __setitem__(self, key, value):
+        mock = Mock()
+        mock.is_installed = value
+        mock.mark_install.return_value = True
+        self.packages[key] = mock
+
+    def commit(self):
+        pass
+
+
+# [(package, True, Exception),..]
+def get_fake_apt_cache(list_packages_data):
+    mock_apt = Mock()
+
+    cache = FakeCache()
+    for package, is_installed in list_packages_data:
+        mock = Mock()
+        mock.is_installed = is_installed
+        mock.mark_install.return_value = True
+        cache[package] = mock
+    mock_apt.cache.Cache.return_value = cache
+    return mock_apt
+
 
 
 class MountCifsWrapperTest(unittest.TestCase):
@@ -121,24 +157,70 @@ class MountCifsWrapperTest(unittest.TestCase):
         wrapper['foo'] = 'bar'
         self.assertIn(('foo', 'bar'), wrapper._options.items())
 
-    @patch('pygmount.core.samba.subprocess.Popen')
-    def test_run_command_call_subprocess_and_wait(self, mock_popen):
-        mock_process = Mock()
-        mock_process.wait.return_code = 0
-        mock_popen.return_value = mock_process
+    @patch('pygmount.core.samba.subprocess.check_output')
+    def test_run_command_call_subprocess_and_wait(self, mock_check_output):
         options = {'foo': 'bar'}
         wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
                                    **options)
-        result = wrapper.run_command()
-        mock_popen.assert_called_once_with(wrapper.command, shell=True,
-                                           stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
-        mock_process.wait.assert_called_once_with()
-    # with patch('pygmount.core.samba.subprocess.Popen',
-    #            get_fake_popen(0)) as mock_popen:
-    #     result = wrapper.run_command()
-    #     print(mock_popen.mock_calls)
-    #     mock_popen.assert_called_once_with(wrapper.command, shell=True,
-    #                                        stdout=subprocess.PIPE,
-    #                                        stderr=subprocess.PIPE)
-    #     mock_popen.wait.assert_called_once_with()
+        wrapper.run_command()
+        mock_check_output.assert_is_called_once(wrapper.command,
+                                                stderr=subprocess.STDOUT,
+                                                shell=True)
+
+    @patch('pygmount.core.samba.subprocess.check_output',
+           get_fake_check_output(0, 'out'))
+    def test_run_command_with_subprocess_ok(self):
+        options = {'foo': 'bar'}
+        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
+                                   **options)
+        return_code, output = wrapper.run_command()
+        self.assertEqual(return_code, 0)
+        self.assertEqual(output, 'out')
+
+    @patch('pygmount.core.samba.subprocess.check_output',
+           get_fake_check_output(1, 'error'))
+    def test_run_command_with_subprocess_ko(self):
+        options = {'foo': 'bar'}
+        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
+                                   **options)
+        return_code, output = wrapper.run_command()
+        self.assertEqual(return_code, 1)
+        self.assertEqual(output, 'error')
+
+
+
+class MountSmbSharesTest(unittest.TestCase):
+
+    def test_apt_pkg_requirements_setter(self):
+        mss = MountSmbShares()
+        packages = ['package1', 'package2']
+        mss.required_packages = packages
+        self.assertIsInstance(mss._required_packages, list)
+        self.assertItemsEqual(mss._required_packages, packages)
+
+    def test_apt_pkg_requirements_getter_setter(self):
+        mss = MountSmbShares()
+        packages = ['package1', 'package2']
+        mss.required_packages = packages
+        self.assertItemsEqual(mss.required_packages, packages)
+
+    # @patch('pygmount.core.samba.apt',
+    #        get_fake_apt_cache([('package1', True), ('package2', True)]))
+    @patch('pygmount.core.samba.apt',
+           get_fake_apt_cache([('package1', True)]))
+    def test_install_apt_package_with_package_not_in_cache(self):
+        mss = MountSmbShares()
+        package = 'package3'
+        # mock_apt.cache.Cache.return_value = {}
+        self.assertRaises(InstallRequiredPackageError,
+                          mss.install_apt_package, package)
+
+
+
+    # def test_apt_install_required_packages_without_error(self):
+    #     mss = MountSmbShares()
+    #     mss.required_packages = ['package1', 'package2']
+    #     result = mss.install_required_packages('apt')
+    #     self.assertItemsEqual(result, mss.required_packages)
+
+

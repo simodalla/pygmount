@@ -3,10 +3,21 @@ from __future__ import unicode_literals, absolute_import
 
 import os.path
 import subprocess
+try:
+    import apt
+except ImportError:
+    apt = None
 
 
 MOUNT_COMMAND_NAME = 'mount'
 CIFS_FILESYSTEM_TYPE = 'cifs'
+
+
+class InstallRequiredPackageError(Exception):
+
+    def __init__(self, msg, original):
+        super(InstallRequiredPackageError, self).__init__(msg)
+        self.original = original
 
 
 class MountCifsWrapper(object):
@@ -54,7 +65,38 @@ class MountCifsWrapper(object):
         self._options[key] = value
 
     def run_command(self):
-        process = subprocess.Popen(self.command, shell=True,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        retcode = process.wait()
+        try:
+            output = subprocess.check_output(
+                self.command, stderr=subprocess.STDOUT, shell=True)
+            return 0, output
+        except subprocess.CalledProcessError as e:
+            return e.returncode, e.output
+
+
+class MountSmbShares(object):
+
+    def __init__(self, config_file=None, **kwargs):
+        self._required_packages = []
+
+    @property
+    def required_packages(self):
+        return self._required_packages
+
+    @required_packages.setter
+    def required_packages(self, iterable):
+        self._required_packages = [element for element in iterable]
+
+    def install_apt_package(self, package_name):
+        cache = apt.cache.Cache()
+        print(cache)
+        try:
+            package = cache[package_name]
+        except KeyError as ke:
+            print("*********")
+            msg = ('Il pacchetto "{package}" non e\' presente in questa'
+                   ' distribuzione'.format(package=package_name))
+            raise InstallRequiredPackageError(msg, ke)
+
+    def install_required_packages(self, package_manager='apt'):
+        installed_packages = []
+        return installed_packages

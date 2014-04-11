@@ -16,8 +16,16 @@ from pygmount.utils.utils import get_sudo_username, read_config, get_home_dir
 
 FILE_RC = '.pygmount.rc'
 
+#
+# class MountSmbShares(object):
+#
+#     def __init__(self, config_file=None, ):
+#
+#
+#     # def apt_
 
-class MountSmbShares(object):
+
+class MountSmbSharesOld(object):
     """
     Classe di utilità per gestire il processo di montaggio di cartelle di rete
     condivise da server samba/windows.
