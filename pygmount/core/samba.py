@@ -15,9 +15,9 @@ CIFS_FILESYSTEM_TYPE = 'cifs'
 
 class InstallRequiredPackageError(Exception):
 
-    def __init__(self, msg, original):
+    def __init__(self, msg, source):
         super(InstallRequiredPackageError, self).__init__(msg)
-        self.original = original
+        self.source = source
 
 
 class MountCifsWrapper(object):
@@ -88,15 +88,32 @@ class MountSmbShares(object):
 
     def install_apt_package(self, package_name):
         cache = apt.cache.Cache()
-        print(cache)
         try:
             package = cache[package_name]
+            if not package.is_installed:
+                try:
+                    package.mark_install()
+                    cache.commit()
+                except apt.LockFailedException as lfe:
+                    msg = (
+                        'Impossibile installare i pacchetti richiesti con un '
+                        ' utente che non ha diritti amministrativi.')
+                    raise InstallRequiredPackageError(msg, lfe)
+                except Exception as e:
+                    msg = (
+                        'Errore genrico nell\'installazione del pacchetto'
+                        ' "{package}".'.format(package=package_name))
+                    raise InstallRequiredPackageError(msg, e)
         except KeyError as ke:
-            print("*********")
             msg = ('Il pacchetto "{package}" non e\' presente in questa'
-                   ' distribuzione'.format(package=package_name))
+                   ' distribuzione.'.format(package=package_name))
             raise InstallRequiredPackageError(msg, ke)
 
-    def install_required_packages(self, package_manager='apt'):
-        installed_packages = []
-        return installed_packages
+    def run(self):
+        for package in self.required_packages:
+            try:
+                self.install_apt_package(package)
+            except InstallRequiredPackageError as irpe:
+                if isinstance(irpe.source, apt.LockFailedException):
+                    return 1
+

@@ -3,19 +3,19 @@
 from __future__ import unicode_literals, absolute_import
 
 import subprocess
+import pytest
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 try:
-    from mock import patch, Mock
+    from mock import patch, Mock, MagicMock
 except ImportError:
     from unittest.mock import patch, Mock
 
 from pygmount.core.samba import (MountCifsWrapper, MountSmbShares,
                                  InstallRequiredPackageError)
-
 
 
 def get_fake_check_output(return_code=0, return_out='out'):
@@ -28,36 +28,44 @@ def get_fake_check_output(return_code=0, return_out='out'):
     return check_output
 
 
+class FakeLockFailedException(Exception):
+    pass
+
+
 class FakeCache(object):
-    def __init__(self):
+    def __init__(self, commit=True):
         self.packages = {}
+        self._commit = commit
 
     def __getitem__(self, item):
         return self.packages[item]
 
     def __setitem__(self, key, value):
+        """
+        key = package_name
+        value = tuple(boolean for is_installed, ...)
+        """
         mock = Mock()
-        mock.is_installed = value
+        mock.is_installed = value[0]
         mock.mark_install.return_value = True
         self.packages[key] = mock
 
     def commit(self):
-        pass
+        if isinstance(self._commit, Exception):
+            raise self._commit
+        return self._commit
 
 
 # [(package, True, Exception),..]
-def get_fake_apt_cache(list_packages_data):
+def get_fake_apt_cache(list_packages_data, commit=True):
     mock_apt = Mock()
-
-    cache = FakeCache()
-    for package, is_installed in list_packages_data:
-        mock = Mock()
-        mock.is_installed = is_installed
-        mock.mark_install.return_value = True
-        cache[package] = mock
+    mock_apt.LockFailedException = FakeLockFailedException
+    cache = FakeCache(commit=commit)
+    mock_apt._cache = cache
+    for data in list_packages_data:
+        cache[data[0]] = data[1:]
     mock_apt.cache.Cache.return_value = cache
     return mock_apt
-
 
 
 class MountCifsWrapperTest(unittest.TestCase):
@@ -188,7 +196,6 @@ class MountCifsWrapperTest(unittest.TestCase):
         self.assertEqual(output, 'error')
 
 
-
 class MountSmbSharesTest(unittest.TestCase):
 
     def test_apt_pkg_requirements_setter(self):
@@ -204,23 +211,41 @@ class MountSmbSharesTest(unittest.TestCase):
         mss.required_packages = packages
         self.assertItemsEqual(mss.required_packages, packages)
 
-    # @patch('pygmount.core.samba.apt',
-    #        get_fake_apt_cache([('package1', True), ('package2', True)]))
     @patch('pygmount.core.samba.apt',
            get_fake_apt_cache([('package1', True)]))
     def test_install_apt_package_with_package_not_in_cache(self):
         mss = MountSmbShares()
-        package = 'package3'
-        # mock_apt.cache.Cache.return_value = {}
+        package = 'fake_package'
         self.assertRaises(InstallRequiredPackageError,
                           mss.install_apt_package, package)
 
+    @patch('pygmount.core.samba.apt',
+           get_fake_apt_cache([('package1', True)]))
+    def test_install_apt_package_with_package_already_installed(self):
+        mss = MountSmbShares()
+        package = 'package1'
+        self.assertIsNone(mss.install_apt_package(package))
 
+    @patch('pygmount.core.samba.apt', get_fake_apt_cache(
+        [('package1', False)], commit=FakeLockFailedException()))
+    def test_install_apt_package_raise_exception_lock_failed(self):
+        mss = MountSmbShares()
+        package = 'package1'
+        with pytest.raises(InstallRequiredPackageError) as e:
+            mss.install_apt_package(package)
+        self.assertIsInstance(e.value.source, FakeLockFailedException)
+        self.assertEqual(e.value.message,
+                         'Impossibile installare i pacchetti richiesti con un '
+                         ' utente che non ha diritti amministrativi.')
 
-    # def test_apt_install_required_packages_without_error(self):
-    #     mss = MountSmbShares()
-    #     mss.required_packages = ['package1', 'package2']
-    #     result = mss.install_required_packages('apt')
-    #     self.assertItemsEqual(result, mss.required_packages)
-
-
+    @patch('pygmount.core.samba.apt', get_fake_apt_cache(
+        [('package1', False)], commit=Exception()))
+    def test_install_apt_package_raise_generic_exception(self):
+        mss = MountSmbShares()
+        package = 'package1'
+        with pytest.raises(InstallRequiredPackageError) as e:
+            mss.install_apt_package(package)
+        self.assertIsInstance(e.value.source, Exception)
+        self.assertEqual(e.value.message,
+                         'Errore genrico nell\'installazione del pacchetto'
+                         ' "{package}".'.format(package=package))
