@@ -66,11 +66,17 @@ class MountCifsWrapper(object):
 
     def run_command(self):
         try:
-            output = subprocess.check_output(
-                self.command, stderr=subprocess.STDOUT, shell=True)
-            return 0, output
+            try:
+                output = subprocess.check_output(
+                    self.command, stderr=subprocess.STDOUT, shell=True)
+                return 0, output
+            except AttributeError:
+                # python 2.6
+                return_code = subprocess.check_call(
+                    self.command, stderr=subprocess.STDOUT, shell=True)
+                return return_code, ''
         except subprocess.CalledProcessError as e:
-            return e.returncode, e.output
+            return e.returncode, getattr(e, 'output', '')
 
 
 class MountSmbShares(object):

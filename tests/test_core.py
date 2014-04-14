@@ -3,7 +3,9 @@
 from __future__ import unicode_literals, absolute_import
 
 import subprocess
+import sys
 import pytest
+
 
 try:
     import unittest2 as unittest
@@ -23,8 +25,14 @@ def get_fake_check_output(return_code=0, return_out='out'):
     if return_code == 0:
         check_output.return_value = return_out
     else:
-        check_output.side_effect = subprocess.CalledProcessError(
-            return_code, 'command', return_out)
+        try:
+            # >= python 2.7
+            check_output.side_effect = subprocess.CalledProcessError(
+                return_code, 'command', return_out)
+        except TypeError:
+            # python 2.6
+            check_output.side_effect = subprocess.CalledProcessError(
+                return_code, 'command')
     return check_output
 
 
@@ -165,6 +173,8 @@ class MountCifsWrapperTest(unittest.TestCase):
         wrapper['foo'] = 'bar'
         self.assertIn(('foo', 'bar'), wrapper._options.items())
 
+    @pytest.mark.skipif(sys.version_info <= (2, 7),
+                        reason="requiresat least python2.7")
     @patch('pygmount.core.samba.subprocess.check_output')
     def test_run_command_call_subprocess_and_wait(self, mock_check_output):
         options = {'foo': 'bar'}
@@ -175,6 +185,8 @@ class MountCifsWrapperTest(unittest.TestCase):
                                                 stderr=subprocess.STDOUT,
                                                 shell=True)
 
+    @pytest.mark.skipif(sys.version_info <= (2, 7),
+                        reason="requiresat least python2.7")
     @patch('pygmount.core.samba.subprocess.check_output',
            get_fake_check_output(0, 'out'))
     def test_run_command_with_subprocess_ok(self):
@@ -185,6 +197,8 @@ class MountCifsWrapperTest(unittest.TestCase):
         self.assertEqual(return_code, 0)
         self.assertEqual(output, 'out')
 
+    @pytest.mark.skipif(sys.version_info <= (2, 7),
+                        reason="requires at least python2.7")
     @patch('pygmount.core.samba.subprocess.check_output',
            get_fake_check_output(1, 'error'))
     def test_run_command_with_subprocess_ko(self):
@@ -203,13 +217,13 @@ class MountSmbSharesTest(unittest.TestCase):
         packages = ['package1', 'package2']
         mss.required_packages = packages
         self.assertIsInstance(mss._required_packages, list)
-        self.assertItemsEqual(mss._required_packages, packages)
+        self.assertListEqual(mss._required_packages, packages)
 
     def test_apt_pkg_requirements_getter_setter(self):
         mss = MountSmbShares()
         packages = ['package1', 'package2']
         mss.required_packages = packages
-        self.assertItemsEqual(mss.required_packages, packages)
+        self.assertListEqual(mss.required_packages, packages)
 
     @patch('pygmount.core.samba.apt',
            get_fake_apt_cache([('package1', True)]))
@@ -234,7 +248,7 @@ class MountSmbSharesTest(unittest.TestCase):
         with pytest.raises(InstallRequiredPackageError) as e:
             mss.install_apt_package(package)
         self.assertIsInstance(e.value.source, FakeLockFailedException)
-        self.assertEqual(e.value.message,
+        self.assertEqual(str(e.value),
                          'Impossibile installare i pacchetti richiesti con un '
                          ' utente che non ha diritti amministrativi.')
 
@@ -246,6 +260,6 @@ class MountSmbSharesTest(unittest.TestCase):
         with pytest.raises(InstallRequiredPackageError) as e:
             mss.install_apt_package(package)
         self.assertIsInstance(e.value.source, Exception)
-        self.assertEqual(e.value.message,
+        self.assertEqual(str(e.value),
                          'Errore genrico nell\'installazione del pacchetto'
                          ' "{package}".'.format(package=package))
