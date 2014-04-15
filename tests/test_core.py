@@ -17,28 +17,7 @@ except ImportError:
     from unittest.mock import patch, Mock
 
 from pygmount.core.samba import (MountCifsWrapper, MountSmbShares,
-                                 InstallRequiredPackageError)
-
-
-SUBPROCESS_CHECK = ('check_output' if getattr(subprocess, 'check_output', None)
-                    else 'check_call')
-
-
-def get_fake_check_output(return_code=0, return_out='out'):
-    check_output = Mock()
-    if return_code == 0:
-        if SUBPROCESS_CHECK == 'check_output':
-            check_output.return_value = return_out
-        else:
-            check_output.return_value = return_code
-    else:
-        if SUBPROCESS_CHECK == 'check_output':
-            check_output.side_effect = subprocess.CalledProcessError(
-                return_code, 'command', return_out)
-        else:
-            check_output.side_effect = subprocess.CalledProcessError(
-                return_code, 'command')
-    return check_output
+                                 InstallRequiredPackageError, run_command)
 
 
 class FakeLockFailedException(Exception):
@@ -80,6 +59,24 @@ def get_fake_apt_cache(list_packages_data=None, commit=True):
             cache[data[0]] = data[1:]
         mock_apt.cache.Cache.return_value = cache
     return mock_apt
+
+
+def get_fake_configparser(config_data):
+    class FakeConfigParser(object):
+        def __init__(self):
+            self._data = list(config_data)
+
+        def read(self, filename):
+            pass
+
+        def sections(self):
+            return [d[0] for d in self._data]
+
+        def items(self, section):
+            for k, values in self._data:
+                if k == section:
+                    return values.items()
+    return FakeConfigParser
 
 
 class MountCifsWrapperTest(unittest.TestCase):
@@ -179,72 +176,77 @@ class MountCifsWrapperTest(unittest.TestCase):
         wrapper['foo'] = 'bar'
         self.assertIn(('foo', 'bar'), wrapper._options.items())
 
-    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK)
-    def test_run_command_call_subprocess_and_wait(self, mock_check_output):
-        options = {'foo': 'bar'}
-        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
-                                   **options)
-        wrapper.run_command()
-        mock_check_output.assert_is_called_once(wrapper.command,
-                                                stderr=subprocess.STDOUT,
-                                                shell=True)
 
-    @pytest.mark.skipif(sys.version_info <= (2, 7),
-                        reason="requires at least python2.7")
-    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK,
-           get_fake_check_output(0, 'out'))
-    def test_run_command_with_subprocess_ok(self):
-        options = {'foo': 'bar'}
-        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
-                                   **options)
-        return_code, output = wrapper.run_command()
-        self.assertEqual(return_code, 0)
-        self.assertEqual(output, 'out')
+class RunCommandTest(unittest.TestCase):
 
-    @pytest.mark.skipif(sys.version_info == (2, 7),
-                        reason="requires python2.6")
-    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK,
-           get_fake_check_output(0, 'out'))
-    def test_run_command_with_subprocess_ok_py26(self):
-        options = {'foo': 'bar'}
-        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
-                                   **options)
-        return_code, output = wrapper.run_command()
-        self.assertEqual(return_code, 0)
-        self.assertEqual(output, '')
+    def setUp(self):
+        self.command = 'ln -s'
 
-    @pytest.mark.skipif(sys.version_info <= (2, 7),
-                        reason="requires at least python2.7")
-    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK,
-           get_fake_check_output(1, 'error'))
-    def test_run_command_with_subprocess_ko(self):
-        options = {'foo': 'bar'}
-        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
-                                   **options)
-        return_code, output = wrapper.run_command()
-        self.assertEqual(return_code, 1)
-        self.assertEqual(output, 'error')
+    @patch('pygmount.core.samba.subprocess')
+    def test_run_command_with_check_output_function(
+            self, mock_subprocess):
+        check_output = Mock()
+        check_output.__name__ = 'check_output'
+        mock_subprocess.check_output = check_output
+        run_command(self.command)
+        check_output.assert_called_once_with(
+            self.command, stderr=mock_subprocess.STDOUT, shell=True)
 
-    @pytest.mark.skipif(sys.version_info == (2, 6),
-                        reason="requires python2.6")
-    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK,
-           get_fake_check_output(1, 'error'))
-    def test_run_command_with_subprocess_ko_py26(self):
-        options = {'foo': 'bar'}
-        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
-                                   **options)
-        return_code, output = wrapper.run_command()
-        self.assertEqual(return_code, 1)
-        self.assertEqual(output, '')
+    @patch('pygmount.core.samba.subprocess', autospec=True)
+    def test_run_command_with_check_call_function(
+            self, mock_subprocess):
+        mock_subprocess.check_call.__name__ = 'check_call'
+        if 'check_output' in dir(mock_subprocess):
+            mock_subprocess.check_output = mock_subprocess.check_call
+        run_command(self.command)
 
-    # @patch('pygmount.core.samba.__builtins__.__getattribute__')
-    def test_for_coverage_100_all_version(self):
-        # print()
-        options = {'foo': 'bar'}
-        with patch('__builtins__.__getattribute__'):
-            wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
-                                       **options)
-            return_code, output = wrapper.run_command()
+        mock_subprocess.check_call.assert_called_once_with(
+            self.command, stderr=mock_subprocess.STDOUT, shell=True)
+
+    @patch('pygmount.core.samba.subprocess')
+    def test_run_command_check_output_return_tuple(
+            self, mock_subprocess):
+        check_output = Mock()
+        check_output.__name__ = 'check_output'
+        check_output.return_value = 'command output'
+        mock_subprocess.check_output = check_output
+        result = run_command(self.command)
+        self.assertEqual(result[0], 0)
+        self.assertEqual(result[1], check_output.return_value)
+
+    @patch('pygmount.core.samba.subprocess', autospec=True)
+    def test_run_command_check_call_return_tuple(
+            self, mock_subprocess):
+        mock_subprocess.check_call.__name__ = 'check_call'
+        mock_subprocess.check_call.return_value = 0
+        if 'check_output' in dir(mock_subprocess):
+            mock_subprocess.check_output = mock_subprocess.check_call
+        result = run_command(self.command)
+        self.assertEqual(result[0], 0)
+        self.assertIsNone(result[1])
+
+    @patch('pygmount.core.samba.subprocess')
+    def test_run_command_in_check_output_occours_exception(
+            self, mock_subprocess):
+        check_output = Mock()
+        mock_subprocess.CalledProcessError = subprocess.CalledProcessError
+        check_output.side_effect = subprocess.CalledProcessError(1,
+                                                                 self.command)
+        result = run_command(self.command)
+        self.assertEqual(result[0], 1)
+        self.assertIsNone(result[1])
+
+    @patch('pygmount.core.samba.subprocess', autospec=True)
+    def test_run_command_in_check_output_occours_exception(
+            self, mock_subprocess):
+        mock_subprocess.CalledProcessError = subprocess.CalledProcessError
+        mock_subprocess.check_call.side_effect = subprocess.CalledProcessError(
+            1, self.command)
+        if 'check_output' in dir(mock_subprocess):
+            mock_subprocess.check_output = mock_subprocess.check_call
+        result = run_command(self.command)
+        self.assertEqual(result[0], 1)
+        self.assertIsNone(result[1])
 
 
 class MountSmbSharesTest(unittest.TestCase):
@@ -315,3 +317,118 @@ class MountSmbSharesTest(unittest.TestCase):
             InstallRequiredPackageError(
                 "IRPE", source=FakeLockFailedException("FLFE")))
         self.assertEqual(mss.run(), 1)
+
+    @patch('pygmount.core.samba.MountCifsWrapper')
+    def test_read_config_parser_simple(self, mock_wrapper):
+        data = [('absoluthe_share', {'hostname': 'server_windows.example',
+                                     'share': 'condivisione',
+                                     'mountpoint': '/mnt/mountpoint'})]
+        with patch('pygmount.core.samba.ConfigParser',
+                   get_fake_configparser(data)):
+            mss = MountSmbShares()
+            mss.set_shares()
+            mock_wrapper.assert_called_once_with(data[0][1]['hostname'],
+                                                 data[0][1]['share'],
+                                                 data[0][1]['mountpoint'])
+            self.assertEqual(len(mss.shares), 1)
+            self.assertEqual(mss.shares[0][0], data[0][0])
+            self.assertIsNone(mss.shares[0][2])
+            self.assertIsNone(mss.shares[0][3])
+
+    @patch('pygmount.core.samba.MountCifsWrapper')
+    def test_read_config_parser_with_only_username(self, mock_wrapper):
+        username = 'user1'
+        hostname = 'server_windows.example'
+        data = [('absoluthe_share',
+                 {'hostname': username + '@' + hostname,
+                  'share': 'condivisione',
+                  'mountpoint': '/mnt/mountpoint'})]
+        with patch('pygmount.core.samba.ConfigParser',
+                   get_fake_configparser(data)):
+            mss = MountSmbShares()
+            mss.set_shares()
+            mock_wrapper.assert_called_once_with(hostname,
+                                                 data[0][1]['share'],
+                                                 data[0][1]['mountpoint'],
+                                                 username=username)
+            self.assertEqual(len(mss.shares), 1)
+            self.assertEqual(mss.shares[0][0], data[0][0])
+
+    @patch('pygmount.core.samba.MountCifsWrapper')
+    def test_read_config_parser_with_only_username_and_password(
+            self, mock_wrapper):
+        username = 'user1'
+        password = 'password'
+        hostname = 'server_windows.example'
+        data = [('absoluthe_share',
+                 {'hostname': username + ':' + password + '@' + hostname,
+                  'share': 'condivisione',
+                  'mountpoint': '/mnt/mountpoint'})]
+        with patch('pygmount.core.samba.ConfigParser',
+                   get_fake_configparser(data)):
+            mss = MountSmbShares()
+            mss.set_shares()
+            mock_wrapper.assert_called_once_with(hostname,
+                                                 data[0][1]['share'],
+                                                 data[0][1][
+                                                     'mountpoint'],
+                                                 username=username,
+                                                 password=password)
+            self.assertEqual(len(mss.shares), 1)
+            self.assertEqual(mss.shares[0][0], data[0][0])
+
+    @patch('pygmount.core.samba.MountCifsWrapper')
+    def test_read_config_parser_with_options(self, mock_wrapper):
+        options = {'option_1': 'option_1', 'option_2': 'option_2'}
+        data = [
+            ('absoluthe_share', {'hostname': 'server_windows.example',
+                                 'share': 'condivisione',
+                                 'mountpoint': '/mnt/mountpoint'})]
+        data[0][1].update(options)
+        with patch('pygmount.core.samba.ConfigParser',
+                   get_fake_configparser(data)):
+            mss = MountSmbShares()
+            mss.set_shares()
+            mock_wrapper.assert_called_once_with(
+                data[0][1]['hostname'],
+                data[0][1]['share'],
+                data[0][1]['mountpoint'],
+                **options)
+            self.assertEqual(len(mss.shares), 1)
+            self.assertEqual(mss.shares[0][0], data[0][0])
+
+    @patch('pygmount.core.samba.MountCifsWrapper')
+    def test_read_config_parser_with_hook_pre_command(self, mock_wrapper):
+        hook = {'hook_pre_command': 'ls -l'}
+        data = [('absoluthe_share', {'hostname': 'server_windows.example',
+                                     'share': 'condivisione',
+                                     'mountpoint': '/mnt/mountpoint'})]
+        data[0][1].update(hook)
+        with patch('pygmount.core.samba.ConfigParser',
+                   get_fake_configparser(data)):
+            mss = MountSmbShares()
+            mss.set_shares()
+            mock_wrapper.assert_called_once_with(data[0][1]['hostname'],
+                                                 data[0][1]['share'],
+                                                 data[0][1]['mountpoint'])
+            self.assertEqual(len(mss.shares), 1)
+            self.assertEqual(mss.shares[0][2], list(hook.values())[0])
+
+    @patch('pygmount.core.samba.MountCifsWrapper')
+    def test_read_config_parser_with_hook_post_command(self, mock_wrapper):
+        hook = {'hook_post_command': 'ls -l'}
+        data = [
+            ('absoluthe_share', {'hostname': 'server_windows.example',
+                                 'share': 'condivisione',
+                                 'mountpoint': '/mnt/mountpoint'})]
+        data[0][1].update(hook)
+        with patch('pygmount.core.samba.ConfigParser',
+                   get_fake_configparser(data)):
+            mss = MountSmbShares()
+            mss.set_shares()
+            mock_wrapper.assert_called_once_with(
+                data[0][1]['hostname'],
+                data[0][1]['share'],
+                data[0][1]['mountpoint'])
+            self.assertEqual(len(mss.shares), 1)
+            self.assertEqual(mss.shares[0][3], list(hook.values())[0])
