@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, absolute_import
+from __future__ import unicode_literals, absolute_import, print_function
 
 import subprocess
 import sys
@@ -20,17 +20,22 @@ from pygmount.core.samba import (MountCifsWrapper, MountSmbShares,
                                  InstallRequiredPackageError)
 
 
+SUBPROCESS_CHECK = ('check_output' if getattr(subprocess, 'check_output', None)
+                    else 'check_call')
+
+
 def get_fake_check_output(return_code=0, return_out='out'):
     check_output = Mock()
     if return_code == 0:
-        check_output.return_value = return_out
+        if SUBPROCESS_CHECK == 'check_output':
+            check_output.return_value = return_out
+        else:
+            check_output.return_value = return_code
     else:
-        try:
-            # >= python 2.7
+        if SUBPROCESS_CHECK == 'check_output':
             check_output.side_effect = subprocess.CalledProcessError(
                 return_code, 'command', return_out)
-        except TypeError:
-            # python 2.6
+        else:
             check_output.side_effect = subprocess.CalledProcessError(
                 return_code, 'command')
     return check_output
@@ -65,14 +70,15 @@ class FakeCache(object):
 
 
 # [(package, True, Exception),..]
-def get_fake_apt_cache(list_packages_data, commit=True):
+def get_fake_apt_cache(list_packages_data=None, commit=True):
     mock_apt = Mock()
     mock_apt.LockFailedException = FakeLockFailedException
-    cache = FakeCache(commit=commit)
-    mock_apt._cache = cache
-    for data in list_packages_data:
-        cache[data[0]] = data[1:]
-    mock_apt.cache.Cache.return_value = cache
+    if list_packages_data:
+        cache = FakeCache(commit=commit)
+        mock_apt._cache = cache
+        for data in list_packages_data:
+            cache[data[0]] = data[1:]
+        mock_apt.cache.Cache.return_value = cache
     return mock_apt
 
 
@@ -173,9 +179,7 @@ class MountCifsWrapperTest(unittest.TestCase):
         wrapper['foo'] = 'bar'
         self.assertIn(('foo', 'bar'), wrapper._options.items())
 
-    @pytest.mark.skipif(sys.version_info <= (2, 7),
-                        reason="requiresat least python2.7")
-    @patch('pygmount.core.samba.subprocess.check_output')
+    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK)
     def test_run_command_call_subprocess_and_wait(self, mock_check_output):
         options = {'foo': 'bar'}
         wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
@@ -186,8 +190,8 @@ class MountCifsWrapperTest(unittest.TestCase):
                                                 shell=True)
 
     @pytest.mark.skipif(sys.version_info <= (2, 7),
-                        reason="requiresat least python2.7")
-    @patch('pygmount.core.samba.subprocess.check_output',
+                        reason="requires at least python2.7")
+    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK,
            get_fake_check_output(0, 'out'))
     def test_run_command_with_subprocess_ok(self):
         options = {'foo': 'bar'}
@@ -197,9 +201,21 @@ class MountCifsWrapperTest(unittest.TestCase):
         self.assertEqual(return_code, 0)
         self.assertEqual(output, 'out')
 
+    @pytest.mark.skipif(sys.version_info == (2, 7),
+                        reason="requires python2.6")
+    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK,
+           get_fake_check_output(0, 'out'))
+    def test_run_command_with_subprocess_ok_py26(self):
+        options = {'foo': 'bar'}
+        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
+                                   **options)
+        return_code, output = wrapper.run_command()
+        self.assertEqual(return_code, 0)
+        self.assertEqual(output, '')
+
     @pytest.mark.skipif(sys.version_info <= (2, 7),
                         reason="requires at least python2.7")
-    @patch('pygmount.core.samba.subprocess.check_output',
+    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK,
            get_fake_check_output(1, 'error'))
     def test_run_command_with_subprocess_ko(self):
         options = {'foo': 'bar'}
@@ -208,6 +224,27 @@ class MountCifsWrapperTest(unittest.TestCase):
         return_code, output = wrapper.run_command()
         self.assertEqual(return_code, 1)
         self.assertEqual(output, 'error')
+
+    @pytest.mark.skipif(sys.version_info == (2, 6),
+                        reason="requires python2.6")
+    @patch('pygmount.core.samba.subprocess.%s' % SUBPROCESS_CHECK,
+           get_fake_check_output(1, 'error'))
+    def test_run_command_with_subprocess_ko_py26(self):
+        options = {'foo': 'bar'}
+        wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
+                                   **options)
+        return_code, output = wrapper.run_command()
+        self.assertEqual(return_code, 1)
+        self.assertEqual(output, '')
+
+    # @patch('pygmount.core.samba.__builtins__.__getattribute__')
+    def test_for_coverage_100_all_version(self):
+        # print()
+        options = {'foo': 'bar'}
+        with patch('__builtins__.__getattribute__'):
+            wrapper = MountCifsWrapper(self.server, self.share, self.mountpoint,
+                                       **options)
+            return_code, output = wrapper.run_command()
 
 
 class MountSmbSharesTest(unittest.TestCase):
@@ -263,3 +300,18 @@ class MountSmbSharesTest(unittest.TestCase):
         self.assertEqual(str(e.value),
                          'Errore genrico nell\'installazione del pacchetto'
                          ' "{package}".'.format(package=package))
+
+    @patch('pygmount.core.samba.apt')
+    @patch('pygmount.core.samba.MountSmbShares.install_apt_package')
+    def test_run_failed_for_apt_lock_failed(self, mock_install_apt, mock_apt):
+        """
+        Test that run return 1 if into an install_apt_package method
+        occurs an apt.LockFailedException exception
+        """
+        mss = MountSmbShares()
+        mss.required_packages = ['package1']
+        mock_apt.LockFailedException = FakeLockFailedException
+        mock_install_apt.side_effect = (
+            InstallRequiredPackageError(
+                "IRPE", source=FakeLockFailedException("FLFE")))
+        self.assertEqual(mss.run(), 1)

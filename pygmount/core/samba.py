@@ -66,11 +66,11 @@ class MountCifsWrapper(object):
 
     def run_command(self):
         try:
-            try:
+            if getattr(subprocess, 'check_output', None):
                 output = subprocess.check_output(
                     self.command, stderr=subprocess.STDOUT, shell=True)
                 return 0, output
-            except AttributeError:
+            else:
                 # python 2.6
                 return_code = subprocess.check_call(
                     self.command, stderr=subprocess.STDOUT, shell=True)
